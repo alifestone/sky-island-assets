@@ -1,0 +1,80 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #bfe0f4;
+  font-family: system-ui, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  user-select: none;
+}
+
+#game { display: block; width: 100vw; height: 100vh; }
+
+#hud { position: fixed; inset: 0; pointer-events: none; }
+
+#crosshair {
+  position: absolute; left: 50%; top: 50%;
+  width: 18px; height: 18px; transform: translate(-50%, -50%);
+}
+#crosshair::before, #crosshair::after {
+  content: ""; position: absolute; background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+#crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+#crosshair::after { left: 0; top: 8px; width: 18px; height: 2px; }
+
+#status {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  padding: 6px 14px; border-radius: 6px;
+  background: rgba(40, 70, 110, 0.75); color: #fff; font-size: 16px;
+  display: none;
+}
+#status.show { display: block; }
+
+#fps {
+  position: absolute; top: 8px; left: 10px;
+  color: rgba(0, 0, 0, 0.55); font: 12px ui-monospace, monospace;
+}
+
+#hotbar {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; padding: 4px;
+  background: rgba(0, 0, 0, 0.35); border-radius: 4px;
+}
+.slot {
+  position: relative; width: 52px; height: 52px;
+  border: 3px solid rgba(255, 255, 255, 0.25); border-radius: 3px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.slot.selected { border-color: #fff; }
+.slot img { width: 100%; height: 100%; image-rendering: pixelated; }
+.slot.empty img { opacity: 0.3; }
+.slot .count {
+  position: absolute; right: 3px; bottom: 1px;
+  color: #fff; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000;
+}
+
+#start {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(30, 60, 90, 0.35);
+}
+#start.hidden { display: none; }
+.card {
+  background: #fff; border-radius: 10px; padding: 24px 32px; min-width: 300px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); color: #222;
+}
+.card h1 { margin: 0 0 12px; font-size: 26px; }
+.card table { border-collapse: collapse; margin-bottom: 16px; font-size: 15px; }
+.card td { padding: 3px 12px 3px 0; }
+kbd {
+  display: inline-block; min-width: 22px; padding: 1px 5px; margin-right: 3px;
+  border: 1px solid #bbb; border-bottom-width: 2px; border-radius: 4px;
+  background: #f6f6f6; font: 13px ui-monospace, monospace; text-align: center;
+}
+#play {
+  width: 100%; padding: 10px; border: 0; border-radius: 6px;
+  background: #3f7d3a; color: #fff; font-size: 17px; cursor: pointer;
+}
+#play:hover { background: #356b31; }
+.note { margin: 12px 0 0; color: #888; font-size: 12px; }

@@ -4,7 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>空中之島</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
 </head>
 <body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div id="crosshair"></div>
+    <div id="status"></div>
+    <div id="hotbar"></div>
+    <div id="fps"></div>
+  </div>
+
+  <div id="start">
+    <div class="card">
+      <h1>空中之島</h1>
+      <table>
+        <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>走路</td></tr>
+        <tr><td><kbd>空白鍵</kbd></td><td>跳</td></tr>
+        <tr><td>滑鼠</td><td>轉視角</td></tr>
+        <tr><td>按住左鍵</td><td>挖方塊</td></tr>
+        <tr><td>走過去</td><td>撿起掉落的方塊</td></tr>
+        <tr><td>右鍵</td><td>放方塊</td></tr>
+        <tr><td><kbd>1</kbd>–<kbd>8</kbd>／滾輪</td><td>選方塊欄</td></tr>
+        <tr><td><kbd>R</kbd></td><td>下雨／停雨</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>暫停</td></tr>
+      </table>
+      <button id="play">點一下開始</button>
+      <p class="note">素材 © 2026 JUNHAO CHEN，CC BY-NC-SA 4.0</p>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>
