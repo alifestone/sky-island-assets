@@ -24,6 +24,8 @@ export class Game {
     this.rain = new Rain();
     this.craftingOpen = false;
     this.viewMode = 'first'; // first | back | front
+    this.events = null; // 多人連線時是陣列：自己改了方塊、下雨，記下來給 NetClient 送出去
+    this.others = new Map(); // 多人連線時別人的小人
     this.time = 0;
   }
 
@@ -95,6 +97,7 @@ export class Game {
     const id = this.inventory.takeSelected();
     if (id === null) return false;
     this.world.set(pos.x, pos.y, pos.z, id);
+    this.events?.push({ t: 'set', x: pos.x, y: pos.y, z: pos.z, b: id });
     return true;
   }
 
@@ -110,11 +113,15 @@ export class Game {
     stepAnimation(this.player, dt);
 
     if (acting && input.place) this.place();
-    if (input.toggleRain) this.rain.toggle();
+    if (input.toggleRain) {
+      this.rain.toggle();
+      this.events?.push({ t: 'rain', on: this.rain.active });
+    }
 
     const broken = this.mining.update(dt, acting && input.mine, this.target());
     if (broken) {
       this.world.set(broken.x, broken.y, broken.z, AIR);
+      this.events?.push({ t: 'set', x: broken.x, y: broken.y, z: broken.z, b: AIR });
       spawnDrop(this.drops, broken.id, broken);
     }
 
