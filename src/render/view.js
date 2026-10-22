@@ -1,8 +1,9 @@
 // three.js 畫面：只負責把 Game 的狀態畫出來，不改遊戲規則
 import * as THREE from 'three';
-import { buildMesh } from './mesher.js';
+import { buildMesh, blockMesh } from './mesher.js';
 import { eyePosition } from '../physics.js';
 import { CRACK_STAGES } from '../mining.js';
+import { DROP_SIZE } from '../drops.js';
 
 export const SKY = 0xbfe0f4;
 
@@ -60,6 +61,10 @@ export class View {
     this.crackBox.visible = false;
     this.scene.add(this.crackBox);
 
+    // 掉落物：每種方塊一份小方塊的形狀，每個掉落物一個 mesh
+    this.dropGeometries = new Map();
+    this.dropMeshes = new Map();
+
     this.addClouds();
     this.resize();
   }
@@ -71,6 +76,26 @@ export class View {
       const cloud = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), mat);
       cloud.position.set(x, y, z);
       this.scene.add(cloud);
+    }
+  }
+
+  syncDrops() {
+    const alive = new Set(this.game.drops);
+    for (const [drop, mesh] of this.dropMeshes) {
+      if (alive.has(drop)) continue;
+      this.scene.remove(mesh);
+      this.dropMeshes.delete(drop);
+    }
+    for (const drop of this.game.drops) {
+      let mesh = this.dropMeshes.get(drop);
+      if (!mesh) {
+        if (!this.dropGeometries.has(drop.id)) this.dropGeometries.set(drop.id, toGeometry(blockMesh(drop.id, DROP_SIZE)));
+        mesh = new THREE.Mesh(this.dropGeometries.get(drop.id), this.blockMaterial);
+        this.dropMeshes.set(drop, mesh);
+        this.scene.add(mesh);
+      }
+      mesh.position.set(drop.pos.x, drop.pos.y, drop.pos.z);
+      mesh.rotation.y = drop.spin;
     }
   }
 
@@ -97,6 +122,7 @@ export class View {
     camera.rotation.set(p.pitch, p.yaw, 0);
 
     this.syncWorld();
+    this.syncDrops();
 
     const t = game.target();
     this.highlight.visible = !!t;

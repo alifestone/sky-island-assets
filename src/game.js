@@ -1,9 +1,10 @@
 // 遊戲狀態：把世界、玩家和各種規則組起來。不碰 three.js，測試直接呼叫 update()
 import { World, generateIsland } from './world.js';
-import { createPlayer, stepPlayer, eyePosition, lookDirection } from './physics.js';
+import { createPlayer, stepPlayer, eyePosition, lookDirection, FALL_LIMIT } from './physics.js';
 import { raycast } from './raycast.js';
 import { AIR } from './blocks.js';
 import { Mining } from './mining.js';
+import { spawnDrop, stepDrop } from './drops.js';
 
 export const REACH = 5; // 挖和放最遠幾格
 
@@ -12,6 +13,7 @@ export class Game {
     this.world = generateIsland(new World());
     this.player = createPlayer(this.world.spawn);
     this.mining = new Mining();
+    this.drops = [];
     this.time = 0;
   }
 
@@ -35,6 +37,12 @@ export class Game {
     stepPlayer(this.player, this.world, input, dt);
 
     const broken = this.mining.update(dt, input.mine, this.target());
-    if (broken) this.world.set(broken.x, broken.y, broken.z, AIR);
+    if (broken) {
+      this.world.set(broken.x, broken.y, broken.z, AIR);
+      spawnDrop(this.drops, broken.id, broken);
+    }
+
+    for (const d of this.drops) stepDrop(d, this.world, dt);
+    this.drops = this.drops.filter((d) => d.pos.y > FALL_LIMIT);
   }
 }
