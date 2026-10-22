@@ -8,12 +8,17 @@ import { run, standAt, aimAt, mineUntilGone, input } from './helpers.js';
 const selectDirt = (game) => game.update(1 / 60, input({ select: { index: HOTBAR.indexOf(DIRT) } }));
 const rightClick = (game) => game.update(1 / 60, input({ place: true }));
 
+// 看著 (bx, by, bz) 那一格「上面」的正中間（看方塊中心的話，射線可能先打到前面那格的上面）
+function aimAtTop(game, bx, by, bz) {
+  aimAt(game, bx, by + 0.5, bz);
+}
+
 // 站好，看著前面地上 (13, y-1, 13) 那格草地的上面
 function lookAtGroundAhead() {
   const game = new Game();
   standAt(game, 13.5, 16.5, 0);
   const y = Math.round(game.player.pos.y);
-  aimAt(game, 13, y - 1, 13);
+  aimAtTop(game, 13, y - 1, 13);
   const t = game.target();
   assert.deepEqual([t.x, t.y, t.z, ...t.normal], [13, y - 1, 13, 0, 1, 0]);
   return { game, y, above: { x: 13, y, z: 13 } };
@@ -75,7 +80,7 @@ test('整串走一遍（挖 → 掉 → 撿 → 放）→ 數字回到原本', (
   assert.equal(game.inventory.count(DIRT), before + 1);
 
   standAt(game, 13.5, 16.5, 0); // 走回來放回原位
-  aimAt(game, b.x, b.y - 1, b.z);
+  aimAtTop(game, b.x, b.y - 1, b.z);
   selectDirt(game);
   rightClick(game);
   assert.equal(game.world.get(b.x, b.y, b.z), DIRT);
