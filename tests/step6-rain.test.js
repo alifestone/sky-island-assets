@@ -2,12 +2,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
-import { World, HOUSE } from '../src/world.js';
+import { World, HOUSE, TOP } from '../src/world.js';
 import { STONE } from '../src/blocks.js';
 import { Rain } from '../src/rain.js';
 import { run, standAt, input } from './helpers.js';
 
 const pressR = (game) => game.update(1 / 60, input({ toggleRain: true }));
+
+// 站在小屋旁邊的地上（standAt 會從天上往下找，會站到屋頂上，所以這裡直接放在地面）
+function standBesideHouse(game, x, z) {
+  standAt(game, x, z, 0);
+  game.player.pos.y = TOP + 1;
+  run(game, 0.2);
+  assert.ok(game.player.onGround && game.player.pos.y === TOP + 1, '站在地上');
+  assert.ok(game.player.pos.y + 1.8 < HOUSE.roofY, '頭在屋頂下面');
+}
 
 test('按 R → 開始下雨，看得到雨滴往下掉', () => {
   const game = new Game();
@@ -72,7 +81,7 @@ test('站在空地上下雨 → 畫面上出現「淋雨中」', () => {
 test('站在屋簷下 → 不會被淋到（不出現「淋雨中」）', () => {
   const game = new Game();
   // 小屋西邊牆外那一排，頭上是往外多出來的屋簷
-  standAt(game, HOUSE.x0 - 0.5, (HOUSE.z0 + HOUSE.z1) / 2 + 0.5, 0);
+  standBesideHouse(game, HOUSE.x0 - 0.5, (HOUSE.z0 + HOUSE.z1) / 2 + 0.5);
   const p = game.player.pos;
   assert.ok(game.world.isSolid(Math.floor(p.x), HOUSE.roofY, Math.floor(p.z)), '頭上是屋簷');
   pressR(game);
@@ -91,7 +100,7 @@ test('走出屋簷 → 又會淋到', () => {
 
 test('不可以：雨滴穿過屋頂、掉進屋子裡', () => {
   const game = new Game();
-  standAt(game, HOUSE.x0 - 0.5, HOUSE.z0 + 2.5, 0); // 站在小屋旁邊，雨下在小屋上
+  standBesideHouse(game, HOUSE.x0 - 0.5, HOUSE.z0 + 2.5); // 站在小屋旁邊，雨下在小屋上
   pressR(game);
   const inFootprint = (d) =>
     d.x >= HOUSE.x0 - 1 && d.x < HOUSE.x1 + 2 && d.z >= HOUSE.z0 - 1 && d.z < HOUSE.z1 + 2;
@@ -101,7 +110,8 @@ test('不可以：雨滴穿過屋頂、掉進屋子裡', () => {
     for (const d of game.rain.drops) {
       if (inFootprint(d)) assert.ok(d.y >= HOUSE.roofY + 1 - 1e-9, `雨滴穿過屋頂到了 y=${d.y}`);
     }
+    // 這一格新濺開的水花（4 秒全部算進去）
+    for (const s of game.rain.splashes) if (s.age === 0 && inFootprint(s)) onRoof++;
   }
-  for (const s of game.rain.splashes) if (inFootprint(s)) onRoof++;
   assert.ok(onRoof > 10, '雨真的有下在屋頂上');
 });
