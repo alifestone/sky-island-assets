@@ -6,6 +6,9 @@ import { CRACK_STAGES } from '../mining.js';
 import { DROP_SIZE } from '../drops.js';
 
 export const SKY = 0xbfe0f4;
+const RAIN_SKY = 0x8a9aa8; // 下雨時天空變暗
+const MAX_RAIN = 1500;
+const MAX_SPLASH = 400;
 
 function pixelTexture(url) {
   const tex = new THREE.TextureLoader().load(url);
@@ -65,6 +68,20 @@ export class View {
     this.dropGeometries = new Map();
     this.dropMeshes = new Map();
 
+    // 雨滴和水花：各用一個 InstancedMesh，一次畫完（舊電腦也順）
+    const rainMat = new THREE.MeshBasicMaterial({ color: 0x5f8fd8, transparent: true, opacity: 0.6, depthWrite: false });
+    this.rainMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.04, 0.5, 0.04), rainMat, MAX_RAIN);
+    this.splashMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.03, 0.14), rainMat, MAX_SPLASH);
+    for (const m of [this.rainMesh, this.splashMesh]) {
+      m.count = 0;
+      m.frustumCulled = false;
+      this.scene.add(m);
+    }
+    this.dummy = new THREE.Object3D();
+    this.skyNow = new THREE.Color(SKY);
+    this.skyClear = new THREE.Color(SKY);
+    this.skyRain = new THREE.Color(RAIN_SKY);
+
     this.addClouds();
     this.resize();
   }
@@ -99,6 +116,27 @@ export class View {
     }
   }
 
+  syncRain(dt) {
+    const rain = this.game.rain;
+    const put = (mesh, list, max) => {
+      const n = Math.min(list.length, max);
+      for (let i = 0; i < n; i++) {
+        const d = list[i];
+        this.dummy.position.set(d.x, d.y + (mesh === this.rainMesh ? 0.25 : 0.02), d.z);
+        this.dummy.updateMatrix();
+        mesh.setMatrixAt(i, this.dummy.matrix);
+      }
+      mesh.count = n;
+      mesh.instanceMatrix.needsUpdate = true;
+    };
+    put(this.rainMesh, rain.drops, MAX_RAIN);
+    put(this.splashMesh, rain.splashes, MAX_SPLASH);
+    // 天空慢慢變暗／變亮
+    this.skyNow.lerp(rain.active ? this.skyRain : this.skyClear, Math.min(1, dt * 2));
+    this.scene.background.copy(this.skyNow);
+    this.scene.fog.color.copy(this.skyNow);
+  }
+
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
@@ -114,7 +152,7 @@ export class View {
     this.worldMesh.geometry = toGeometry(buildMesh(world));
   }
 
-  render() {
+  render(dt = 1 / 60) {
     const { game, camera } = this;
     const p = game.player;
     const eye = eyePosition(p);
@@ -123,6 +161,7 @@ export class View {
 
     this.syncWorld();
     this.syncDrops();
+    this.syncRain(dt);
 
     const t = game.target();
     this.highlight.visible = !!t;

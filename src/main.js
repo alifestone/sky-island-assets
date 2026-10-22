@@ -7,10 +7,12 @@ const canvas = document.getElementById('game');
 const startScreen = document.getElementById('start');
 const fpsLabel = document.getElementById('fps');
 const hotbar = document.getElementById('hotbar');
+const statusLabel = document.getElementById('status');
 
 const game = new Game();
 const view = new View(canvas, game);
 window.game = game; // 方便在主控台檢查
+window.view = view;
 
 // 方塊欄：圖示 + 數字，選中的那格有框；有變才更新
 const slotEls = game.inventory.slots.map((slot, i) => {
@@ -108,13 +110,20 @@ function readInput() {
 
 let last = performance.now();
 let frames = 0, fpsTime = 0;
+let lastStatus = '';
 
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
   if (playing) game.update(dt, readInput());
-  view.render();
+  view.render(dt);
   updateHotbar();
+  const status = game.status();
+  if (status !== lastStatus) {
+    lastStatus = status;
+    statusLabel.textContent = status ? `☔ ${status}` : '';
+    statusLabel.classList.toggle('show', !!status);
+  }
 
   frames++; fpsTime += dt;
   if (fpsTime >= 0.5) {

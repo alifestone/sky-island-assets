@@ -7,6 +7,7 @@ import { Mining } from './mining.js';
 import { spawnDrop, stepDrop, stepPickup } from './drops.js';
 import { Inventory } from './inventory.js';
 import { placePosition, canPlace } from './placement.js';
+import { Rain, isSheltered } from './rain.js';
 
 export const REACH = 5; // 挖和放最遠幾格
 
@@ -17,6 +18,7 @@ export class Game {
     this.mining = new Mining();
     this.drops = [];
     this.inventory = new Inventory();
+    this.rain = new Rain();
     this.time = 0;
   }
 
@@ -33,6 +35,17 @@ export class Game {
     const p = this.player;
     p.yaw -= dYaw;
     p.pitch = Math.max(-1.55, Math.min(1.55, p.pitch - dPitch));
+  }
+
+  // 下雨而且頭上沒有東西擋著，就是淋到雨
+  wet() {
+    const p = this.player.pos;
+    return this.rain.active && !isSheltered(this.world, p.x, p.y + PLAYER.height, p.z);
+  }
+
+  // 畫面上方的提示文字
+  status() {
+    return this.wet() ? '淋雨中' : '';
   }
 
   // 右鍵：把選中那格的方塊放到看著的那一面上；放成功回傳 true
@@ -54,6 +67,7 @@ export class Game {
     stepPlayer(this.player, this.world, input, dt);
 
     if (input.place) this.place();
+    if (input.toggleRain) this.rain.toggle();
 
     const broken = this.mining.update(dt, input.mine, this.target());
     if (broken) {
@@ -70,5 +84,7 @@ export class Game {
       }
       return d.pos.y > FALL_LIMIT;
     });
+
+    this.rain.update(dt, this.world, this.player.pos);
   }
 }
