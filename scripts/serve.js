@@ -21,8 +21,9 @@ export function contentType(path) {
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
-export function startServer(port = 8080) {
-  const server = createServer(async (req, res) => {
+// 送靜態檔案的 http 伺服器（還沒開始聽）
+export function createStaticServer() {
+  return createServer(async (req, res) => {
     const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     const file = normalize(join(ROOT, url.endsWith('/') ? url + 'index.html' : url));
     if (!file.startsWith(ROOT)) {
@@ -36,6 +37,10 @@ export function startServer(port = 8080) {
       res.writeHead(404).end('Not found');
     }
   });
+}
+
+export function startServer(port = 8080) {
+  const server = createStaticServer();
   server.listen(port, () => console.log(`空中之島：http://localhost:${port}`));
   return server;
 }
