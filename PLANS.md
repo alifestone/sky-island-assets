@@ -17,6 +17,10 @@
 - [x] **8 衝刺**：按住 Shift 往前 1.5 倍速、視角變寬、往後不衝刺 → STEP 7
 - [x] **9 人物模型、第三人稱**：V 切換三種視角、相機不穿牆、走路擺手腳、頭跟著看 → STEP 8
 
+- [ ] **10 伺服器（multiplayer 分支）**：房間規則（加入、世界快照、轉傳移動、檢查方塊改變、離開、下雨、人數上限）＋ 自己寫的 WebSocket（握手、收發文字訊息）→ STEP 9
+- [ ] **11 連線（multiplayer 分支）**：客戶端連線、收世界、送自己的動作、套用別人的改變、找不到伺服器就單人 → STEP 9
+- [ ] **12 別人的小人（multiplayer 分支）**：畫別人的小人和名字、多人狀態提示、開始畫面輸入名字 → STEP 9
+
 第 1 批 = 步驟 0–5，第 1 批做完自己從頭整串玩一遍，再做步驟 6。第 3 批 = 步驟 7–9。
 
 ## 檔案怎麼放
@@ -42,6 +46,10 @@ src/
   render/view.js      three.js：場景、材質、mesh、裂痕、掉落物、雨
   main.js             讀鍵盤滑鼠 → Game → view，每格畫一次
 tests/                node --test 測試，一個 STEP 一個檔
+server/room.js        （multiplayer）房間規則：不碰網路，可以直接測
+server/websocket.js   （multiplayer）自己寫的 WebSocket（RFC 6455，只做文字訊息）
+scripts/server.js     （multiplayer）npm run server：靜態網頁 + /ws
+src/net.js            （multiplayer）客戶端：連線、送收訊息、套用到 Game
 scripts/serve.js      不用安裝的本機靜態伺服器（只給開發用）
 assets/               素材包（原封不動）
 ```
