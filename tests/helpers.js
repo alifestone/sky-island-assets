@@ -26,3 +26,17 @@ export function standAt(game, x, z, yaw = 0, pitch = 0) {
 }
 
 export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+
+// 讓玩家看著 (bx, by, bz) 那一格的中心
+export function aimAt(game, bx, by, bz) {
+  const p = game.player;
+  const ex = p.pos.x, ey = p.pos.y + 1.62, ez = p.pos.z;
+  const dx = bx + 0.5 - ex, dy = by + 0.5 - ey, dz = bz + 0.5 - ez;
+  p.yaw = Math.atan2(-dx, -dz);
+  p.pitch = Math.atan2(dy, Math.hypot(dx, dz));
+}
+
+// 按住左鍵直到那一格被挖掉（最多 5 秒）
+export function mineUntilGone(game, b) {
+  for (let i = 0; i < 300 && game.world.get(b.x, b.y, b.z) !== 0; i++) game.update(1 / 60, input({ mine: true }));
+}
