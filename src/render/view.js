@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { buildMesh } from './mesher.js';
 import { eyePosition } from '../physics.js';
+import { CRACK_STAGES } from '../mining.js';
 
 export const SKY = 0xbfe0f4;
 
@@ -49,6 +50,16 @@ export class View {
     this.highlight.visible = false;
     this.scene.add(this.highlight);
 
+    // 挖方塊的裂痕：比方塊大一點點的透明方塊，cracks.png 10 張排成一排，換 offset 就換張
+    this.cracks = pixelTexture('assets/cracks.png');
+    this.cracks.repeat.set(1 / CRACK_STAGES, 1);
+    this.crackBox = new THREE.Mesh(
+      new THREE.BoxGeometry(1.01, 1.01, 1.01),
+      new THREE.MeshBasicMaterial({ map: this.cracks, transparent: true, depthWrite: false }),
+    );
+    this.crackBox.visible = false;
+    this.scene.add(this.crackBox);
+
     this.addClouds();
     this.resize();
   }
@@ -90,6 +101,13 @@ export class View {
     const t = game.target();
     this.highlight.visible = !!t;
     if (t) this.highlight.position.set(t.x + 0.5, t.y + 0.5, t.z + 0.5);
+
+    const crack = game.crack();
+    this.crackBox.visible = !!crack;
+    if (crack) {
+      this.crackBox.position.set(crack.x + 0.5, crack.y + 0.5, crack.z + 0.5);
+      this.cracks.offset.x = crack.stage / CRACK_STAGES;
+    }
 
     this.renderer.render(this.scene, camera);
   }
