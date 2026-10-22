@@ -1,14 +1,39 @@
 // 讀鍵盤和滑鼠 → Game.update() → View.render()，每一格做一次
 import { Game } from './game.js';
 import { View } from './render/view.js';
+import { BLOCKS } from './blocks.js';
 
 const canvas = document.getElementById('game');
 const startScreen = document.getElementById('start');
 const fpsLabel = document.getElementById('fps');
+const hotbar = document.getElementById('hotbar');
 
 const game = new Game();
 const view = new View(canvas, game);
 window.game = game; // 方便在主控台檢查
+
+// 方塊欄：圖示 + 數字，選中的那格有框；有變才更新
+const slotEls = game.inventory.slots.map((slot, i) => {
+  const el = document.createElement('div');
+  el.className = 'slot';
+  el.innerHTML = `<img src="assets/icons/${BLOCKS[slot.id].name}.png" alt="${BLOCKS[slot.id].name}"><span class="count"></span>`;
+  el.title = `${i + 1}`;
+  hotbar.appendChild(el);
+  return el;
+});
+let hotbarKey = '';
+function updateHotbar() {
+  const inv = game.inventory;
+  const key = inv.selected + ':' + inv.slots.map((s) => s.count).join(',');
+  if (key === hotbarKey) return;
+  hotbarKey = key;
+  inv.slots.forEach((slot, i) => {
+    const el = slotEls[i];
+    el.classList.toggle('selected', i === inv.selected);
+    el.classList.toggle('empty', slot.count === 0);
+    el.querySelector('.count').textContent = slot.count > 0 ? slot.count : '';
+  });
+}
 
 const keys = new Set();
 const mouse = { left: false, rightPressed: false };
@@ -82,6 +107,7 @@ function frame(now) {
   last = now;
   if (playing) game.update(dt, readInput());
   view.render();
+  updateHotbar();
 
   frames++; fpsTime += dt;
   if (fpsTime >= 0.5) {

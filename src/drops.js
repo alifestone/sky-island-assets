@@ -14,6 +14,7 @@ export function spawnDrop(drops, id, block) {
     spin: 0,
     age: 0,
     onGround: false,
+    flying: false, // 正在飛向玩家
   };
   drops.push(drop);
   return drop;
@@ -29,9 +30,44 @@ function hits(world, x, y, z, axis) {
   return false;
 }
 
+export const PICKUP_RADIUS = 1.5; // 離玩家身體這麼近才會被吸過去
+export const PICKUP_DELAY = 0.4; // 剛彈出來的先讓它彈一下，再吸
+const FLY_START = 2; // 開始飛的速度（格／秒），越飛越快，看得到它飛過來
+const FLY_ACCEL = 14;
+
+// 小方塊到玩家身體（腳底到頭頂那一條線）的距離
+function distanceToBody(drop, player, height) {
+  const p = player.pos;
+  const y = Math.max(p.y, Math.min(p.y + height, drop.pos.y));
+  return Math.hypot(drop.pos.x - p.x, drop.pos.y - y, drop.pos.z - p.z);
+}
+
+// 靠近就飛向玩家；飛到身上回傳 true（由呼叫的人放進方塊欄）
+// canTake：方塊欄還放得下這種方塊嗎？放不下就留在地上
+export function stepPickup(drop, player, height, canTake, dt) {
+  if (!drop.flying) {
+    if (drop.age < PICKUP_DELAY || !canTake) return false;
+    if (distanceToBody(drop, player, height) > PICKUP_RADIUS) return false;
+    drop.flying = true;
+    drop.flySpeed = FLY_START;
+  }
+  drop.flySpeed += FLY_ACCEL * dt;
+  const target = { x: player.pos.x, y: player.pos.y + height * 0.5, z: player.pos.z };
+  const dx = target.x - drop.pos.x, dy = target.y - drop.pos.y, dz = target.z - drop.pos.z;
+  const d = Math.hypot(dx, dy, dz);
+  const move = drop.flySpeed * dt;
+  if (d <= Math.max(move, 0.3)) return true;
+  drop.pos.x += (dx / d) * move;
+  drop.pos.y += (dy / d) * move;
+  drop.pos.z += (dz / d) * move;
+  drop.spin += SPIN_SPEED * 3 * dt;
+  return false;
+}
+
 export function stepDrop(drop, world, dt) {
   drop.age += dt;
   drop.spin += SPIN_SPEED * dt;
+  if (drop.flying) return;
   const p = drop.pos, v = drop.vel;
   v.y = Math.max(v.y - GRAVITY * dt, -30);
 
