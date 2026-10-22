@@ -125,8 +125,10 @@ export class NetClient {
       return;
     }
     // 自己挖、放、下雨 → 送出去
-    for (const e of game.events) this.send(e);
-    game.events.length = 0;
+    if (game.events) {
+      for (const e of game.events) this.send(e);
+      game.events.length = 0;
+    }
 
     // 自己的位置：有變才送，一秒最多 15 次
     this.sendTimer += dt;
@@ -153,4 +155,11 @@ export class NetClient {
       stepAnimation(o, dt);
     }
   }
+}
+
+// 網頁從哪台伺服器來，就連那台的 /ws；直接開檔案（file://）就不連線
+export function serverUrl(location) {
+  if (location.protocol === 'http:') return `ws://${location.host}/ws`;
+  if (location.protocol === 'https:') return `wss://${location.host}/ws`;
+  return null;
 }

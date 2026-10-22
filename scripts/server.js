@@ -7,7 +7,8 @@ import { createStaticServer } from './serve.js';
 import { attachWebSocket } from '../server/websocket.js';
 import { Room } from '../server/room.js';
 
-export function startMultiplayerServer(port = 8080, host = '0.0.0.0') {
+// host 不給：IPv4 和 IPv6 都聽（瀏覽器的 localhost 可能是 ::1）
+export function startMultiplayerServer(port = 8080, host) {
   const room = new Room();
   const http = createStaticServer();
   const links = new Map(); // WebSocket 連線 → 給 Room 用的 conn
@@ -27,8 +28,9 @@ export function startMultiplayerServer(port = 8080, host = '0.0.0.0') {
       links.delete(ws);
     },
   });
-  return new Promise((done) => {
-    http.listen(port, host, () => {
+  return new Promise((done, fail) => {
+    http.once('error', fail);
+    http.listen(port, ...(host ? [host] : []), () => {
       done({
         port: http.address().port,
         room,
@@ -53,5 +55,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.log('空中之島（多人）開好了，同一個網路的人打開：');
     console.log(`  http://localhost:${port}`);
     for (const ip of lanAddresses()) console.log(`  http://${ip}:${port}`);
+  }, (err) => {
+    if (err.code === 'EADDRINUSE') console.error(`port ${port} 已經有別的程式在用（是不是 npm start 還開著？）。關掉它，或用 PORT=8081 npm run server`);
+    else console.error(err);
+    process.exit(1);
   });
 }

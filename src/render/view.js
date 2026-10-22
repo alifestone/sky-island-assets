@@ -33,8 +33,8 @@ function joint(x, y, z, ...children) {
   g.add(...children);
   return g;
 }
-function buildCharacter() {
-  const skin = 0xe0b48a, shirt = 0x3a8fb7, pants = 0x3b4a8a, hair = 0x4a2f1d, eye = 0x1d1d1d;
+function buildCharacter(shirt = 0x3a8fb7) {
+  const skin = 0xe0b48a, pants = 0x3b4a8a, hair = 0x4a2f1d, eye = 0x1d1d1d;
   const root = new THREE.Group();
   const parts = {
     leftLeg: joint(-0.11, LIMB, 0, box(0.22, LIMB, 0.22, pants, -LIMB / 2)),
@@ -50,6 +50,39 @@ function buildCharacter() {
   };
   root.add(box(0.44, LIMB, 0.22, shirt, LIMB * 1.5), ...Object.values(parts));
   return { root, parts };
+}
+
+// 別人的衣服顏色（依編號輪流），才分得出誰是誰
+const SHIRTS = [0xc0392b, 0x27ae60, 0x8e44ad, 0xd35400, 0x16a085, 0xd4ac0d, 0x2c3e50, 0xe84393];
+
+// 頭上的名字：畫在 canvas 上當貼圖（不是 HTML，別人給的文字不會變成程式）
+function nameTag(name) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  g.font = 'bold 30px system-ui, "Microsoft JhengHei", sans-serif';
+  const w = Math.min(248, g.measureText(name).width + 28);
+  g.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  g.fillRect((256 - w) / 2, 8, w, 48);
+  g.fillStyle = '#fff';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(name, 128, 33, 240);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  sprite.scale.set(1.6, 0.4, 1);
+  sprite.position.y = 2.2;
+  return sprite;
+}
+
+function posePlayer(character, p) {
+  const { root, parts } = character;
+  const pose = characterPose(p);
+  root.position.set(p.pos.x, p.pos.y, p.pos.z);
+  root.rotation.y = pose.body;
+  parts.head.rotation.x = pose.head;
+  for (const k of ['leftArm', 'rightArm', 'leftLeg', 'rightLeg']) parts[k].rotation.x = pose[k];
 }
 
 function toGeometry(mesh) {
@@ -101,6 +134,7 @@ export class View {
     this.character = buildCharacter();
     this.character.root.visible = false;
     this.scene.add(this.character.root);
+    this.remote = new Map(); // 多人連線：別人的小人
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.6));
     const sun = new THREE.DirectionalLight(0xffffff, 1.4);
     sun.position.set(0.5, 1, 0.3);
@@ -139,15 +173,30 @@ export class View {
   }
 
   syncCharacter() {
-    const { root, parts } = this.character;
-    const p = this.game.player;
-    root.visible = this.game.showCharacter();
-    if (!root.visible) return;
-    const pose = characterPose(p);
-    root.position.set(p.pos.x, p.pos.y, p.pos.z);
-    root.rotation.y = pose.body;
-    parts.head.rotation.x = pose.head;
-    for (const k of ['leftArm', 'rightArm', 'leftLeg', 'rightLeg']) parts[k].rotation.x = pose[k];
+    this.character.root.visible = this.game.showCharacter();
+    if (this.character.root.visible) posePlayer(this.character, this.game.player);
+  }
+
+  // 多人連線：別人的小人和名字
+  syncOthers() {
+    const others = this.game.others;
+    for (const [id, ch] of this.remote) {
+      if (others.has(id)) continue;
+      this.scene.remove(ch.root);
+      ch.tag.material.map.dispose();
+      this.remote.delete(id);
+    }
+    for (const [id, o] of others) {
+      let ch = this.remote.get(id);
+      if (!ch) {
+        ch = buildCharacter(SHIRTS[id % SHIRTS.length]);
+        ch.tag = nameTag(o.name);
+        ch.root.add(ch.tag);
+        this.scene.add(ch.root);
+        this.remote.set(id, ch);
+      }
+      posePlayer(ch, o);
+    }
   }
 
   syncDrops() {
@@ -213,6 +262,7 @@ export class View {
     camera.position.set(cam.x, cam.y, cam.z);
     camera.rotation.set(cam.pitch, cam.yaw, 0);
     this.syncCharacter();
+    this.syncOthers();
     // 衝刺時視角慢慢變寬，放開慢慢變回來
     const fov = fovFor(p);
     if (Math.abs(camera.fov - fov) > 0.05) {

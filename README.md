@@ -10,6 +10,18 @@ npm start          # 開本機網頁 → http://localhost:8080
 npm test           # 一行跑全部測試（Node 內建 node --test，不用裝套件）
 ```
 
+### 多人連線（multiplayer 分支）
+
+```bash
+git switch multiplayer
+npm run server     # 一台電腦開伺服器，會印出網址，例如 http://192.168.1.5:8080
+```
+
+同一個 Wi‑Fi 的人用瀏覽器打開那個網址、輸入名字、按開始，就在同一座島上（最多 8 人）。
+挖、放方塊和下雨大家都看得到；掉落物和方塊欄每個人各自算；伺服器關掉後世界不會存下來。
+Windows 第一次開可能會跳防火牆詢問，要允許「私人網路」別人才連得進來。
+連不上伺服器（例如用 `npm start` 或 GitHub Pages 開）就自動變成一個人玩。
+
 ES module 不能用 `file://` 直接開，所以要用 `npm start`（或任何靜態伺服器、GitHub Pages）。
 
 | 操作 | 按鍵 |

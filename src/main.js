@@ -2,6 +2,7 @@
 import { Game } from './game.js';
 import { View } from './render/view.js';
 import { BLOCKS, iconName, CRAFTING_TABLE } from './blocks.js';
+import { NetClient, serverUrl } from './net.js';
 
 const canvas = document.getElementById('game');
 const startScreen = document.getElementById('start');
@@ -11,11 +12,26 @@ const statusLabel = document.getElementById('status');
 const craftingPanel = document.getElementById('crafting');
 const recipesEl = document.getElementById('recipes');
 const tableHint = document.getElementById('table-hint');
+const netLabel = document.getElementById('net');
+const nameInput = document.getElementById('name');
 
 const game = new Game();
 const view = new View(canvas, game);
 window.game = game; // 方便在主控台檢查
 window.view = view;
+
+// 多人連線：第一次按開始才連線（才知道名字）；名字記在這台電腦（存不了也沒關係）
+let net = null;
+try { nameInput.value = localStorage.getItem('sky-island-name') ?? ''; } catch {}
+function connect() {
+  if (net) return;
+  const url = serverUrl(location);
+  const name = nameInput.value.trim();
+  try { localStorage.setItem('sky-island-name', name); } catch {}
+  if (url) net = window.net = new NetClient(game, { url, name });
+  else netLabel.textContent = '單人';
+}
+nameInput.addEventListener('keydown', (e) => e.stopPropagation()); // 打名字時不要觸發遊戲按鍵
 
 const icon = (id) => `assets/icons/${iconName(id)}.png`;
 
@@ -91,8 +107,12 @@ function setPlaying(on) {
   if (!playing) { keys.clear(); mouse.left = false; }
 }
 
-document.getElementById('play').addEventListener('click', () => (noLock ? setPlaying(true) : lock()));
-canvas.addEventListener('click', () => { if (!playing) lock(); });
+document.getElementById('play').addEventListener('click', () => {
+  connect();
+  if (noLock) setPlaying(true);
+  else lock();
+});
+canvas.addEventListener('click', () => { if (!playing) { connect(); lock(); } });
 document.getElementById('close-crafting').addEventListener('click', () => { toggleCraft = true; });
 
 document.addEventListener('pointerlockchange', () => {
@@ -183,6 +203,11 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
   if (playing) game.update(dt, readInput());
+  if (net) {
+    net.update(dt);
+    const text = net.statusText();
+    if (netLabel.textContent !== text) netLabel.textContent = text;
+  }
   syncPanel();
   view.render(dt);
   document.body.classList.toggle('third-person', game.viewMode !== 'first');
