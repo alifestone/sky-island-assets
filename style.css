@@ -21,6 +21,7 @@ html, body {
   content: ""; position: absolute; background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
+.third-person #crosshair { display: none; }
 #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
 #crosshair::after { left: 0; top: 8px; width: 18px; height: 2px; }
 

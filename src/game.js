@@ -9,6 +9,8 @@ import { Inventory } from './inventory.js';
 import { placePosition, canPlace } from './placement.js';
 import { Rain, isSheltered } from './rain.js';
 import { RECIPES, findRecipe, nearCraftingTable, whyNot, craft } from './crafting.js';
+import { cameraPose, nextView } from './camera.js';
+import { stepAnimation } from './character.js';
 
 export const REACH = 5; // 挖和放最遠幾格
 
@@ -21,6 +23,7 @@ export class Game {
     this.inventory = new Inventory();
     this.rain = new Rain();
     this.craftingOpen = false;
+    this.viewMode = 'first'; // first | back | front
     this.time = 0;
   }
 
@@ -48,6 +51,15 @@ export class Game {
   // 畫面上方的提示文字
   status() {
     return this.wet() ? '淋雨中' : '';
+  }
+
+  camera() {
+    return cameraPose(this.world, this.player, this.viewMode);
+  }
+
+  // 第一人稱不畫自己的身體，才不會擋住畫面
+  showCharacter() {
+    return this.viewMode !== 'first';
   }
 
   nearTable() {
@@ -91,9 +103,11 @@ export class Game {
     if (input.select?.index !== undefined) this.inventory.select(input.select.index);
     if (input.select?.delta) this.inventory.scroll(input.select.delta);
     if (input.toggleCraft) this.craftingOpen = !this.craftingOpen;
+    if (input.toggleView) this.viewMode = nextView(this.viewMode);
     // 合成畫面開著：人物不走、不挖、不放（重力照算）
     const acting = !this.craftingOpen;
     stepPlayer(this.player, this.world, acting ? input : {}, dt);
+    stepAnimation(this.player, dt);
 
     if (acting && input.place) this.place();
     if (input.toggleRain) this.rain.toggle();

@@ -75,6 +75,7 @@ const keys = new Set();
 const mouse = { left: false, rightPressed: false };
 let toggleRain = false;
 let toggleCraft = false;
+let toggleView = false;
 let select = null;
 let playing = false; // 遊戲在跑（包含開著合成畫面的時候）
 let noLock = false; // 瀏覽器不給鎖滑鼠
@@ -128,6 +129,7 @@ document.addEventListener('keydown', (e) => {
   if (e.repeat) return keys.add(e.code);
   if (e.code === 'KeyE') toggleCraft = true;
   if (e.code === 'KeyR') toggleRain = true;
+  if (e.code === 'KeyV') toggleView = true;
   if (/^Digit[1-9]$/.test(e.code)) select = { index: Number(e.code.slice(5)) - 1 };
   keys.add(e.code);
   if (e.code === 'Space') e.preventDefault();
@@ -147,11 +149,13 @@ function readInput() {
     place: mouse.rightPressed,
     toggleRain,
     toggleCraft,
+    toggleView,
     select,
   };
   mouse.rightPressed = false;
   toggleRain = false;
   toggleCraft = false;
+  toggleView = false;
   select = null;
   return input;
 }
@@ -181,6 +185,7 @@ function frame(now) {
   if (playing) game.update(dt, readInput());
   syncPanel();
   view.render(dt);
+  document.body.classList.toggle('third-person', game.viewMode !== 'first');
   updateHotbar();
   if (panelShown) updateRecipes();
   const status = game.status();

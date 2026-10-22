@@ -1,10 +1,10 @@
 // three.js 畫面：只負責把 Game 的狀態畫出來，不改遊戲規則
 import * as THREE from 'three';
 import { buildMesh, blockMesh } from './mesher.js';
-import { eyePosition } from '../physics.js';
 import { CRACK_STAGES } from '../mining.js';
 import { DROP_SIZE } from '../drops.js';
 import { fovFor, BASE_FOV } from '../camera.js';
+import { characterPose } from '../character.js';
 
 export const SKY = 0xbfe0f4;
 const RAIN_SKY = 0x8a9aa8; // 下雨時天空變暗
@@ -18,6 +18,38 @@ function pixelTexture(url) {
   tex.generateMipmaps = false;
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
+}
+
+// 方塊小人（素材包沒有人物圖，用純色方塊）。高 1.8 格，面向 -z；手、腳、頭各有自己的關節
+const LIMB = 0.68, HEAD = 0.44, SLEEVE = LIMB - 0.18; // 袖子下面接手，不重疊（重疊會閃）
+function box(w, h, d, color, y = 0, x = 0, z = 0) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
+  m.position.set(x, y, z);
+  return m;
+}
+function joint(x, y, z, ...children) {
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  g.add(...children);
+  return g;
+}
+function buildCharacter() {
+  const skin = 0xe0b48a, shirt = 0x3a8fb7, pants = 0x3b4a8a, hair = 0x4a2f1d, eye = 0x1d1d1d;
+  const root = new THREE.Group();
+  const parts = {
+    leftLeg: joint(-0.11, LIMB, 0, box(0.22, LIMB, 0.22, pants, -LIMB / 2)),
+    rightLeg: joint(0.11, LIMB, 0, box(0.22, LIMB, 0.22, pants, -LIMB / 2)),
+    leftArm: joint(-0.32, LIMB * 2 - 0.04, 0, box(0.2, SLEEVE, 0.2, shirt, -SLEEVE / 2 + 0.04), box(0.2, 0.18, 0.2, skin, -LIMB + 0.13)),
+    rightArm: joint(0.32, LIMB * 2 - 0.04, 0, box(0.2, SLEEVE, 0.2, shirt, -SLEEVE / 2 + 0.04), box(0.2, 0.18, 0.2, skin, -LIMB + 0.13)),
+    head: joint(0, LIMB * 2, 0,
+      box(HEAD, HEAD, HEAD, skin, HEAD / 2),
+      box(HEAD + 0.02, 0.1, HEAD + 0.02, hair, HEAD - 0.04),
+      box(HEAD + 0.02, 0.2, 0.06, hair, HEAD - 0.1, 0, HEAD / 2 - 0.02),
+      box(0.07, 0.07, 0.02, eye, HEAD * 0.55, -0.1, -HEAD / 2 - 0.005),
+      box(0.07, 0.07, 0.02, eye, HEAD * 0.55, 0.1, -HEAD / 2 - 0.005)),
+  };
+  root.add(box(0.44, LIMB, 0.22, shirt, LIMB * 1.5), ...Object.values(parts));
+  return { root, parts };
 }
 
 function toGeometry(mesh) {
@@ -65,6 +97,15 @@ export class View {
     this.crackBox.visible = false;
     this.scene.add(this.crackBox);
 
+    // 自己的方塊小人：第三人稱才看得到
+    this.character = buildCharacter();
+    this.character.root.visible = false;
+    this.scene.add(this.character.root);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+    sun.position.set(0.5, 1, 0.3);
+    this.scene.add(sun);
+
     // 掉落物：每種方塊一份小方塊的形狀，每個掉落物一個 mesh
     this.dropGeometries = new Map();
     this.dropMeshes = new Map();
@@ -95,6 +136,18 @@ export class View {
       cloud.position.set(x, y, z);
       this.scene.add(cloud);
     }
+  }
+
+  syncCharacter() {
+    const { root, parts } = this.character;
+    const p = this.game.player;
+    root.visible = this.game.showCharacter();
+    if (!root.visible) return;
+    const pose = characterPose(p);
+    root.position.set(p.pos.x, p.pos.y, p.pos.z);
+    root.rotation.y = pose.body;
+    parts.head.rotation.x = pose.head;
+    for (const k of ['leftArm', 'rightArm', 'leftLeg', 'rightLeg']) parts[k].rotation.x = pose[k];
   }
 
   syncDrops() {
@@ -156,9 +209,10 @@ export class View {
   render(dt = 1 / 60) {
     const { game, camera } = this;
     const p = game.player;
-    const eye = eyePosition(p);
-    camera.position.set(eye.x, eye.y, eye.z);
-    camera.rotation.set(p.pitch, p.yaw, 0);
+    const cam = game.camera();
+    camera.position.set(cam.x, cam.y, cam.z);
+    camera.rotation.set(cam.pitch, cam.yaw, 0);
+    this.syncCharacter();
     // 衝刺時視角慢慢變寬，放開慢慢變回來
     const fov = fovFor(p);
     if (Math.abs(camera.fov - fov) > 0.05) {
