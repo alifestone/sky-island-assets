@@ -1,25 +1,31 @@
 // 讀鍵盤和滑鼠 → Game.update() → View.render()，每一格做一次
 import { Game } from './game.js';
 import { View } from './render/view.js';
-import { BLOCKS } from './blocks.js';
+import { BLOCKS, iconName, CRAFTING_TABLE } from './blocks.js';
 
 const canvas = document.getElementById('game');
 const startScreen = document.getElementById('start');
 const fpsLabel = document.getElementById('fps');
 const hotbar = document.getElementById('hotbar');
 const statusLabel = document.getElementById('status');
+const craftingPanel = document.getElementById('crafting');
+const recipesEl = document.getElementById('recipes');
+const tableHint = document.getElementById('table-hint');
 
 const game = new Game();
 const view = new View(canvas, game);
 window.game = game; // 方便在主控台檢查
 window.view = view;
 
+const icon = (id) => `assets/icons/${iconName(id)}.png`;
+
 // 方塊欄：圖示 + 數字，選中的那格有框；有變才更新
 const slotEls = game.inventory.slots.map((slot, i) => {
   const el = document.createElement('div');
   el.className = 'slot';
-  el.innerHTML = `<img src="assets/icons/${BLOCKS[slot.id].name}.png" alt="${BLOCKS[slot.id].name}"><span class="count"></span>`;
-  el.title = `${i + 1}`;
+  const badge = slot.id === CRAFTING_TABLE ? '<span class="badge">合成台</span>' : '';
+  el.innerHTML = `<img src="${icon(slot.id)}" alt="${BLOCKS[slot.id].label}">${badge}<span class="count"></span>`;
+  el.title = `${i + 1} ${BLOCKS[slot.id].label}`;
   hotbar.appendChild(el);
   return el;
 });
@@ -37,18 +43,46 @@ function updateHotbar() {
   });
 }
 
+// 合成畫面：每個配方一列（只建一次）；材料、是否靠近合成台有變才更新文字和按鈕
+const label = (id) => BLOCKS[id].label;
+const recipeRows = game.recipeList().map((r) => {
+  const row = document.createElement('div');
+  row.className = 'recipe';
+  const tag = r.needsTable ? '<span class="tag">要合成台</span>' : '';
+  row.innerHTML = `<img src="${icon(r.output.id)}" alt="">
+    <div class="what"><b>${r.name} ×${r.output.count}</b>${tag}<div class="need"></div></div>
+    <button>合成</button>`;
+  row.querySelector('button').addEventListener('click', () => game.craft(r.id));
+  recipesEl.appendChild(row);
+  return { need: row.querySelector('.need'), button: row.querySelector('button') };
+});
+let recipesKey = '';
+function updateRecipes() {
+  const list = game.recipeList();
+  const key = game.nearTable() + ':' + list.map((r) => r.reason).join(',') + ':' + hotbarKey;
+  if (key === recipesKey) return;
+  recipesKey = key;
+  tableHint.textContent = game.nearTable() ? '旁邊有合成台：所有配方都能用。' : '標「要合成台」的配方，要站在合成台旁邊（3 格內）。';
+  list.forEach((r, i) => {
+    const { need, button } = recipeRows[i];
+    need.textContent = r.inputs.map(([id, n]) => `${label(id)} ×${n}（有 ${game.inventory.count(id)}）`).join(' + ');
+    button.disabled = !r.canCraft;
+    button.title = r.reason ?? '';
+  });
+}
+
 const keys = new Set();
 const mouse = { left: false, rightPressed: false };
 let toggleRain = false;
+let toggleCraft = false;
 let select = null;
-let playing = false;
+let playing = false; // 遊戲在跑（包含開著合成畫面的時候）
+let noLock = false; // 瀏覽器不給鎖滑鼠
+let panelShown = false;
 
 function lock() {
-  canvas.requestPointerLock?.();
+  if (!noLock) canvas.requestPointerLock?.();
 }
-
-document.getElementById('play').addEventListener('click', lock);
-canvas.addEventListener('click', () => { if (!playing) lock(); });
 
 function setPlaying(on) {
   playing = on;
@@ -56,19 +90,23 @@ function setPlaying(on) {
   if (!playing) { keys.clear(); mouse.left = false; }
 }
 
-document.addEventListener('pointerlockchange', () => setPlaying(document.pointerLockElement === canvas));
-// 有些瀏覽器（或內嵌頁面）不給鎖滑鼠：照樣開始玩，移動滑鼠一樣能轉視角，Esc 暫停
-document.addEventListener('pointerlockerror', () => setPlaying(true));
-document.addEventListener('keydown', (e) => {
-  if (e.code === 'Escape' && playing && !document.pointerLockElement) setPlaying(false);
+document.getElementById('play').addEventListener('click', () => (noLock ? setPlaying(true) : lock()));
+canvas.addEventListener('click', () => { if (!playing) lock(); });
+document.getElementById('close-crafting').addEventListener('click', () => { toggleCraft = true; });
+
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === canvas) setPlaying(true);
+  else if (!game.craftingOpen) setPlaying(false); // 開合成畫面時放開滑鼠，不是暫停
 });
+// 有些瀏覽器（或內嵌頁面）不給鎖滑鼠：照樣開始玩，移動滑鼠一樣能轉視角，Esc 暫停
+document.addEventListener('pointerlockerror', () => { noLock = true; setPlaying(true); });
 
 document.addEventListener('mousemove', (e) => {
-  if (playing) game.look(e.movementX * 0.0025, e.movementY * 0.0025);
+  if (playing && !game.craftingOpen) game.look(e.movementX * 0.0025, e.movementY * 0.0025);
 });
 
 canvas.addEventListener('mousedown', (e) => {
-  if (!playing) return;
+  if (!playing || game.craftingOpen) return;
   if (e.button === 0) mouse.left = true;
   if (e.button === 2) mouse.rightPressed = true;
 });
@@ -76,14 +114,21 @@ document.addEventListener('mouseup', (e) => { if (e.button === 0) mouse.left = f
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 document.addEventListener('wheel', (e) => {
-  if (!playing) return;
+  if (!playing || game.craftingOpen) return;
   select = { delta: Math.sign(e.deltaY) };
 });
 
 document.addEventListener('keydown', (e) => {
   if (!playing) return;
-  if (e.code === 'KeyR' && !e.repeat) toggleRain = true;
-  if (/^Digit[1-8]$/.test(e.code)) select = { index: Number(e.code.slice(5)) - 1 };
+  if (e.code === 'Escape') {
+    if (game.craftingOpen) toggleCraft = true; // Esc 關掉合成畫面
+    else if (!document.pointerLockElement) setPlaying(false);
+    return;
+  }
+  if (e.repeat) return keys.add(e.code);
+  if (e.code === 'KeyE') toggleCraft = true;
+  if (e.code === 'KeyR') toggleRain = true;
+  if (/^Digit[1-9]$/.test(e.code)) select = { index: Number(e.code.slice(5)) - 1 };
   keys.add(e.code);
   if (e.code === 'Space') e.preventDefault();
 });
@@ -100,12 +145,29 @@ function readInput() {
     mine: mouse.left,
     place: mouse.rightPressed,
     toggleRain,
+    toggleCraft,
     select,
   };
   mouse.rightPressed = false;
   toggleRain = false;
+  toggleCraft = false;
   select = null;
   return input;
+}
+
+// 合成畫面開／關：開的時候放開滑鼠讓人點按鈕，關的時候再鎖回去
+function syncPanel() {
+  if (game.craftingOpen === panelShown) return;
+  panelShown = game.craftingOpen;
+  craftingPanel.classList.toggle('hidden', !panelShown);
+  if (panelShown) {
+    keys.clear();
+    mouse.left = false;
+    recipesKey = '';
+    if (document.pointerLockElement) document.exitPointerLock();
+  } else {
+    lock();
+  }
 }
 
 let last = performance.now();
@@ -116,8 +178,10 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
   if (playing) game.update(dt, readInput());
+  syncPanel();
   view.render(dt);
   updateHotbar();
+  if (panelShown) updateRecipes();
   const status = game.status();
   if (status !== lastStatus) {
     lastStatus = status;

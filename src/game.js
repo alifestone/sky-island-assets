@@ -2,12 +2,13 @@
 import { World, generateIsland } from './world.js';
 import { createPlayer, stepPlayer, eyePosition, lookDirection, FALL_LIMIT, PLAYER } from './physics.js';
 import { raycast } from './raycast.js';
-import { AIR } from './blocks.js';
+import { AIR, CRAFTING_TABLE } from './blocks.js';
 import { Mining } from './mining.js';
 import { spawnDrop, stepDrop, stepPickup } from './drops.js';
 import { Inventory } from './inventory.js';
 import { placePosition, canPlace } from './placement.js';
 import { Rain, isSheltered } from './rain.js';
+import { RECIPES, findRecipe, nearCraftingTable, whyNot, craft } from './crafting.js';
 
 export const REACH = 5; // 挖和放最遠幾格
 
@@ -19,6 +20,7 @@ export class Game {
     this.drops = [];
     this.inventory = new Inventory();
     this.rain = new Rain();
+    this.craftingOpen = false;
     this.time = 0;
   }
 
@@ -48,10 +50,34 @@ export class Game {
     return this.wet() ? '淋雨中' : '';
   }
 
-  // 右鍵：把選中那格的方塊放到看著的那一面上；放成功回傳 true
+  nearTable() {
+    return nearCraftingTable(this.world, this.player.pos);
+  }
+
+  // 合成畫面要顯示的配方：要什麼、做出什麼、現在能不能做
+  recipeList() {
+    const near = this.nearTable();
+    return RECIPES.map((r) => {
+      const reason = whyNot(r, this.inventory, near);
+      return { ...r, canCraft: reason === null, reason };
+    });
+  }
+
+  // 合成畫面開著才能合成；成功回傳 true
+  craft(recipeId) {
+    const recipe = findRecipe(recipeId);
+    if (!this.craftingOpen || !recipe) return false;
+    return craft(recipe, this.inventory, this.nearTable());
+  }
+
+  // 右鍵：對著合成台就打開合成畫面；不然把選中那格的方塊放到看著的那一面上；放成功回傳 true
   place() {
     const t = this.target();
     if (!t) return false;
+    if (t.id === CRAFTING_TABLE) {
+      this.craftingOpen = true;
+      return false;
+    }
     const pos = placePosition(t);
     if (!canPlace(this.world, this.player, pos)) return false;
     const id = this.inventory.takeSelected();
@@ -64,12 +90,15 @@ export class Game {
     this.time += dt;
     if (input.select?.index !== undefined) this.inventory.select(input.select.index);
     if (input.select?.delta) this.inventory.scroll(input.select.delta);
-    stepPlayer(this.player, this.world, input, dt);
+    if (input.toggleCraft) this.craftingOpen = !this.craftingOpen;
+    // 合成畫面開著：人物不走、不挖、不放（重力照算）
+    const acting = !this.craftingOpen;
+    stepPlayer(this.player, this.world, acting ? input : {}, dt);
 
-    if (input.place) this.place();
+    if (acting && input.place) this.place();
     if (input.toggleRain) this.rain.toggle();
 
-    const broken = this.mining.update(dt, input.mine, this.target());
+    const broken = this.mining.update(dt, acting && input.mine, this.target());
     if (broken) {
       this.world.set(broken.x, broken.y, broken.z, AIR);
       spawnDrop(this.drops, broken.id, broken);

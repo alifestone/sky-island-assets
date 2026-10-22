@@ -78,3 +78,36 @@ kbd {
 }
 #play:hover { background: #356b31; }
 .note { margin: 12px 0 0; color: #888; font-size: 12px; }
+
+.slot .badge {
+  position: absolute; left: 2px; top: 1px;
+  color: #fff; font-size: 11px; font-weight: 700; text-shadow: 1px 1px 0 #000;
+}
+
+#crafting {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 30, 40, 0.45);
+}
+#crafting.hidden { display: none; }
+#crafting h2 { margin: 0 0 4px; font-size: 22px; }
+#crafting .note { margin: 0 0 12px; }
+.recipe {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-top: 1px solid #eee;
+}
+.recipe img { width: 32px; height: 32px; image-rendering: pixelated; }
+.recipe .what { flex: 1; font-size: 15px; }
+.recipe .need { color: #666; font-size: 13px; }
+.recipe .tag {
+  margin-left: 6px; padding: 0 5px; border-radius: 3px;
+  background: #f1e6c8; color: #7a5a10; font-size: 11px;
+}
+.recipe button {
+  padding: 6px 14px; border: 0; border-radius: 5px;
+  background: #3f7d3a; color: #fff; font-size: 14px; cursor: pointer;
+}
+.recipe button:disabled { background: #bbb; cursor: not-allowed; }
+#close-crafting {
+  width: 100%; margin-top: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 6px;
+  background: #fafafa; font-size: 15px; cursor: pointer;
+}
