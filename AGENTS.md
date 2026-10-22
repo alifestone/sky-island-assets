@@ -12,6 +12,8 @@
 
 ## 這個專案
 
+- 開發流程的細節（加功能、修 bug、測試和 commit 的規則）寫在 `development_rule.md`。
+
 - 跑全部測試：`npm test`（Node 內建 `node --test`，不裝套件）。
 - 本機開遊戲：`npm start`，再打開 http://localhost:8080 。
 - 遊戲邏輯放在 `src/`，不能 import three.js；只有 `src/render/view.js` 和 `src/main.js` 可以用 three.js。

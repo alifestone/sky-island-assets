@@ -35,6 +35,7 @@ ES module 不能用 `file://` 直接開，所以要用 `npm start`（或任何�
 | [PLANS.v1.md](PLANS.v1.md) | AI 起草的第一版計畫（對照用） | AI |
 | [PLANS.md](PLANS.md) | 審查後的計畫、邊做邊調整的紀錄 | AI 起草，我審 |
 | [AGENTS.md](AGENTS.md) | AI 怎麼做事 | 我 |
+| [development_rule.md](development_rule.md) | 開發流程：文件分工、TDD、測試和 commit 的規則 | 我 |
 
 ## 程式
 
