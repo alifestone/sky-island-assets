@@ -69,6 +69,11 @@ export function stepDrop(drop, world, dt) {
   drop.spin += SPIN_SPEED * dt;
   if (drop.flying) return;
   const p = drop.pos, v = drop.vel;
+  // 有方塊放在小方塊身上：把它推到那格上面，不會被埋在方塊裡
+  while (world.isSolid(Math.floor(p.x), Math.floor(p.y), Math.floor(p.z)) && p.y < world.size) {
+    p.y = Math.floor(p.y) + 1 + HALF;
+    v.y = 0;
+  }
   v.y = Math.max(v.y - GRAVITY * dt, -30);
 
   const steps = Math.max(1, Math.ceil(Math.max(Math.abs(v.y), Math.abs(v.x), Math.abs(v.z)) * dt / 0.1));

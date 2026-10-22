@@ -48,10 +48,17 @@ function lock() {
 document.getElementById('play').addEventListener('click', lock);
 canvas.addEventListener('click', () => { if (!playing) lock(); });
 
-document.addEventListener('pointerlockchange', () => {
-  playing = document.pointerLockElement === canvas;
+function setPlaying(on) {
+  playing = on;
   startScreen.classList.toggle('hidden', playing);
   if (!playing) { keys.clear(); mouse.left = false; }
+}
+
+document.addEventListener('pointerlockchange', () => setPlaying(document.pointerLockElement === canvas));
+// 有些瀏覽器（或內嵌頁面）不給鎖滑鼠：照樣開始玩，移動滑鼠一樣能轉視角，Esc 暫停
+document.addEventListener('pointerlockerror', () => setPlaying(true));
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape' && playing && !document.pointerLockElement) setPlaying(false);
 });
 
 document.addEventListener('mousemove', (e) => {

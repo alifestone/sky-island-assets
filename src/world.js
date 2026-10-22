@@ -121,7 +121,7 @@ export function generateIsland(world) {
   tree(world, 10, TOP + 2, 20, 4);
   tree(world, 13, TOP + 1, 9, 3);
   house(world);
-  world.spawn = { x: 14.5, y: TOP + 1, z: 18.5, yaw: Math.atan2(-6, 4) }; // 面向小屋
+  world.spawn = { x: 13.5, y: TOP + 1, z: 20.5, yaw: Math.atan2(-7, 6) }; // 面向小屋
   world.version++;
   return world;
 }

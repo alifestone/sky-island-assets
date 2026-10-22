@@ -6,6 +6,7 @@ import { AIR } from './blocks.js';
 import { Mining } from './mining.js';
 import { spawnDrop, stepDrop, stepPickup } from './drops.js';
 import { Inventory } from './inventory.js';
+import { placePosition, canPlace } from './placement.js';
 
 export const REACH = 5; // 挖和放最遠幾格
 
@@ -34,11 +35,25 @@ export class Game {
     p.pitch = Math.max(-1.55, Math.min(1.55, p.pitch - dPitch));
   }
 
+  // 右鍵：把選中那格的方塊放到看著的那一面上；放成功回傳 true
+  place() {
+    const t = this.target();
+    if (!t) return false;
+    const pos = placePosition(t);
+    if (!canPlace(this.world, this.player, pos)) return false;
+    const id = this.inventory.takeSelected();
+    if (id === null) return false;
+    this.world.set(pos.x, pos.y, pos.z, id);
+    return true;
+  }
+
   update(dt, input) {
     this.time += dt;
     if (input.select?.index !== undefined) this.inventory.select(input.select.index);
     if (input.select?.delta) this.inventory.scroll(input.select.delta);
     stepPlayer(this.player, this.world, input, dt);
+
+    if (input.place) this.place();
 
     const broken = this.mining.update(dt, input.mine, this.target());
     if (broken) {
