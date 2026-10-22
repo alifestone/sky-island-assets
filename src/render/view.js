@@ -4,6 +4,7 @@ import { buildMesh, blockMesh } from './mesher.js';
 import { eyePosition } from '../physics.js';
 import { CRACK_STAGES } from '../mining.js';
 import { DROP_SIZE } from '../drops.js';
+import { fovFor, BASE_FOV } from '../camera.js';
 
 export const SKY = 0xbfe0f4;
 const RAIN_SKY = 0x8a9aa8; // 下雨時天空變暗
@@ -38,7 +39,7 @@ export class View {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(SKY);
     this.scene.fog = new THREE.Fog(SKY, 40, 90);
-    this.camera = new THREE.PerspectiveCamera(75, 1, 0.05, 120);
+    this.camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.05, 120);
     this.camera.rotation.order = 'YXZ';
 
     this.atlas = pixelTexture('assets/atlas.png');
@@ -158,6 +159,12 @@ export class View {
     const eye = eyePosition(p);
     camera.position.set(eye.x, eye.y, eye.z);
     camera.rotation.set(p.pitch, p.yaw, 0);
+    // 衝刺時視角慢慢變寬，放開慢慢變回來
+    const fov = fovFor(p);
+    if (Math.abs(camera.fov - fov) > 0.05) {
+      camera.fov += (fov - camera.fov) * Math.min(1, dt * 10);
+      camera.updateProjectionMatrix();
+    }
 
     this.syncWorld();
     this.syncDrops();

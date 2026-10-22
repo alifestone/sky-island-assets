@@ -2,6 +2,7 @@
 // pos 是腳底中心；yaw 0 面向 -z（和 three.js 相機一樣）
 export const PLAYER = { halfWidth: 0.3, height: 1.8, eye: 1.62 };
 export const WALK_SPEED = 4.3;
+export const SPRINT_MULTIPLIER = 1.5; // 按住 Shift 往前跑
 export const GRAVITY = 28;
 export const JUMP_SPEED = 8.6;
 export const FALL_LIMIT = -12; // 掉到這麼低就回出生點
@@ -14,6 +15,7 @@ export function createPlayer(spawn) {
     yaw: spawn.yaw ?? 0,
     pitch: 0,
     onGround: false,
+    sprinting: false,
   };
 }
 
@@ -68,22 +70,24 @@ export function respawn(player, spawn) {
   player.pitch = 0;
 }
 
-// input: { forward, back, left, right, jump }
+// input: { forward, back, left, right, jump, sprint }
 export function stepPlayer(player, world, input, dt) {
   const f = (input.forward ? 1 : 0) - (input.back ? 1 : 0);
   const s = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+  player.sprinting = !!input.sprint && f > 0; // 只有往前才衝刺
+  const speed = WALK_SPEED * (player.sprinting ? SPRINT_MULTIPLIER : 1);
   let mx = -Math.sin(player.yaw) * f + Math.cos(player.yaw) * s;
   let mz = -Math.cos(player.yaw) * f - Math.sin(player.yaw) * s;
   const len = Math.hypot(mx, mz);
   if (len > 0) { mx /= len; mz /= len; }
-  player.vel.x = mx * WALK_SPEED;
-  player.vel.z = mz * WALK_SPEED;
+  player.vel.x = mx * speed;
+  player.vel.z = mz * speed;
 
   if (input.jump && player.onGround) player.vel.y = JUMP_SPEED;
   player.vel.y = Math.max(player.vel.y - GRAVITY * dt, -40);
 
   // 一次最多走 0.4 格，才不會穿過方塊
-  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(player.vel.y), WALK_SPEED) * dt / 0.4));
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(player.vel.y), speed) * dt / 0.4));
   const h = dt / steps;
   player.onGround = false;
   for (let i = 0; i < steps; i++) {

@@ -142,6 +142,7 @@ function readInput() {
     left: keys.has('KeyA') || keys.has('ArrowLeft'),
     right: keys.has('KeyD') || keys.has('ArrowRight'),
     jump: keys.has('Space'),
+    sprint: keys.has('ShiftLeft') || keys.has('ShiftRight'),
     mine: mouse.left,
     place: mouse.rightPressed,
     toggleRain,
