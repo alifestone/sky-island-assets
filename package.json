@@ -5,7 +5,7 @@
   "description": "Week 7 作業：空中之島（three.js 靜態網站）",
   "type": "module",
   "scripts": {
-    "test": "node --test tests/",
+    "test": "node --test \"tests/**/*.test.js\"",
     "start": "node scripts/serve.js"
   }
 }
